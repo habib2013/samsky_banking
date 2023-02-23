@@ -65,23 +65,26 @@ class _AppAuthScreenState extends State<AppAuthScreen> {
 
   // For a list of client IDs, go to https://demo.duendesoftware.com
   final String _clientId = 'SamskyPay';
-  final String _clientSecret = "hB%\YHMJV4X@I/b'~&2B";
+  final String _clientSecret = "[;uhM}s;}.4dHu":N[4(I)17"LE7z7>xRBq8J4P7Dr]";
+  final String _redirectUrl =
+      'samskyauth://com.samsky.banking/connect/callback';
 
-  final String _redirectUrl = 'samskyauth://com.samsky.banking/connect/callback' ;
-  final String _issuer = 'https://dev-api-platform.digidoe.com';
+  final String _issuer = 'https://dd-api-emi-sp.digidoe.com';
   final String _discoveryUrl =
-      'https://dev-api-platform.digidoe.com/.well-known/openid-configuration';
-  final String _postLogoutRedirectUrl = 'samskyauth://com.samsky.banking/connect/callback';
+      'https://dd-api-emi-sp.digidoe.com/.well-known/openid-configuration';
+  final String _postLogoutRedirectUrl =
+      'samskyauth://com.samsky.banking/connect/endsession';
   final List<String> _scopes = <String>[
     "openid",
     "all_api",
-    "offline_access"
+    "offline_access",
+    "user_data"
   ];
-
   final AuthorizationServiceConfiguration _serviceConfiguration =
   const AuthorizationServiceConfiguration(
-    authorizationEndpoint: 'https://dev-api-platform.digidoe.com/connect/authorize?acr_values=idp:Customer%20tenant:samskypay',
-    tokenEndpoint: "https://dev-api-platform.digidoe.com/connect/token?client_secret=hB%\YHMJV4X@I/b'~&2B",
+    authorizationEndpoint:
+    'https://dd-api-emi-sp.digidoe.com/connect/authorize?acr_values=idp:Customer%20tenant:samskypay',
+    tokenEndpoint: "https://dd-api-emi-sp.digidoe.com/connect/token",
     endSessionEndpoint: 'samskyauth://com.samsky.banking/connect/endsession',
   );
 
@@ -113,7 +116,7 @@ class _AppAuthScreenState extends State<AppAuthScreen> {
                 const SizedBox(height: 8),
                 ElevatedButton(
                   child: const Text('Exchange code'),
-                  onPressed: _authorizationCode != null ? _exchangeCode : null,
+                  onPressed: _authorizationCode != null ? exchangeCode : null,
                 ),
                 const SizedBox(height: 8),
                 ElevatedButton(
@@ -211,6 +214,8 @@ class _AppAuthScreenState extends State<AppAuthScreen> {
       final TokenResponse? result = await _appAuth.token(TokenRequest(
           _clientId, _redirectUrl,
           refreshToken: _refreshToken, issuer: _issuer, scopes: _scopes));
+
+
       _processTokenResponse(result);
       await _testApi(result);
     } catch (_) {
@@ -218,11 +223,11 @@ class _AppAuthScreenState extends State<AppAuthScreen> {
     }
   }
 
-  Future<void> _exchangeCode() async {
+  Future<void> exchangeCode() async {
     try {
       _setBusyState();
       final TokenResponse? result = await _appAuth.token(TokenRequest(
-          _clientId, _redirectUrl,
+          _clientId, _redirectUrl, clientSecret: _clientSecret,
           authorizationCode: _authorizationCode,
           discoveryUrl: _discoveryUrl,
           codeVerifier: _codeVerifier,
@@ -234,6 +239,33 @@ class _AppAuthScreenState extends State<AppAuthScreen> {
       _clearBusyState();
     }
   }
+
+  // Future<void> _exchangeCode() async {
+  //
+  //  // print('${_nonce} --> ${_clientId} --> ${_codeVerifier} --> ${_authorizationCode}');
+  //
+  //   try {
+  //     _setBusyState();
+  //     final TokenResponse? result = await _appAuth.token(TokenRequest(
+  //         _clientId, _redirectUrl,
+  //         authorizationCode: _authorizationCode,
+  //          discoveryUrl: _discoveryUrl ,
+  //         codeVerifier: _codeVerifier,
+  //         nonce: _nonce,
+  //         scopes: _scopes,
+  //         allowInsecureConnections: true
+  //     ));
+  //
+  //
+  //     print('>> ${result!.accessToken}');
+  //   _processTokenResponse(result);
+  //   //  print('new result >> ${p}');
+  //     await _testApi(result);
+  //   } catch (e) {
+  //     print('error << ${e}');
+  //     _clearBusyState();
+  //   }
+  // }
 
   Future<void> _signInWithNoCodeExchange() async {
     try {
@@ -352,6 +384,7 @@ class _AppAuthScreenState extends State<AppAuthScreen> {
   }
 
   void _processTokenResponse(TokenResponse? response) {
+    print('real >> ${response}');
     setState(() {
       _accessToken = _accessTokenTextController.text = response!.accessToken!;
       _idToken = _idTokenTextController.text = response.idToken!;
@@ -359,12 +392,20 @@ class _AppAuthScreenState extends State<AppAuthScreen> {
       _accessTokenExpirationTextController.text =
           response.accessTokenExpirationDateTime!.toIso8601String();
     });
+
   }
 
   Future<void> _testApi(TokenResponse? response) async {
     final http.Response httpResponse = await http.get(
-        Uri.parse('https://demo.duendesoftware.com/api/test'),
-        headers: <String, String>{'Authorization': 'Bearer $_accessToken'});
+        Uri.parse('https://dd-api-emi-sp.digidoe.com/connect/token'),
+        headers: <String, String>{
+          'Authorization': 'Bearer $_accessToken',
+          'Content-Type': 'application/x-www-form-urlencoded',
+          //   'grant_type': 'authorization_code&code=${_authorizationCode}B&redirect_uri=samskyauth%3a%2f%2fcom.samsky.banking%2fconnect%2fcallback&code_verifier=${_codeVerifier}&client_id=SamskyPay&client_secret=${_clientSecret}'
+        }
+
+
+    );
     setState(() {
       _userInfo = httpResponse.statusCode == 200 ? httpResponse.body : '';
       _isBusy = false;
